@@ -62,12 +62,14 @@ public class TaskAnalyticsServiceImpl implements TaskAnalyticsService {
 
         long overdueCount = tacheRepository.countOverdue(entreprise.getId());
         Double avgCompletion = computeAverageCompletion(tasks);
+        double supplierDepensesTotal = depenseRepository.sumByFournisseurEntrepriseAndStatus(entreprise.getId(), StatusDepense.APPROVED);
 
         return TaskAnalyticsResponse.builder()
                 .overdueTasks(overdueCount)
                 .averageCompletionDays(avgCompletion)
                 .tasksPerEmployee(taskCounts)
                 .expensesPerTask(expenseTotals)
+                .supplierDepensesTotal(supplierDepensesTotal)
                 .build();
     }
 

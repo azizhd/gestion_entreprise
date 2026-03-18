@@ -15,4 +15,5 @@ public class TaskAnalyticsResponse {
     private Double averageCompletionDays;
     private List<EmployeeTaskCountDto> tasksPerEmployee;
     private List<TaskExpenseTotalDto> expensesPerTask;
+    private Double supplierDepensesTotal;
 }

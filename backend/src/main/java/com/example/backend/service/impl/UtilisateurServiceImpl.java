@@ -3,6 +3,7 @@ package com.example.backend.service.impl;
 import com.example.backend.audit.AuditAction;
 import com.example.backend.audit.ActionType;
 import com.example.backend.dto.UtilisateurDTO;
+import com.example.backend.dto.UserProfileUpdateRequest;
 import com.example.backend.entitie.Entreprise;
 import com.example.backend.entitie.Utilisateur;
 import com.example.backend.entitie.enumuration.TypeRole;
@@ -99,6 +100,47 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         utilisateur.setPhoto(utilisateurDTO.getPhoto());
         utilisateurRepository.save(utilisateur);
         return utilisateurMapper.toDto(utilisateur);
+    }
+
+    @Override
+    @AuditAction(action = "Update Current User", entityType = "Utilisateur", type = ActionType.UPDATE)
+    @PreAuthorize("isAuthenticated()")
+    public UtilisateurDTO updateCurrentUser(UserProfileUpdateRequest request) {
+        Utilisateur current = resolveCurrentUser();
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String nextEmail = request.getEmail().trim();
+            if (!nextEmail.equalsIgnoreCase(current.getEmail())) {
+                utilisateurRepository.findByEmail(nextEmail)
+                        .filter(existing -> !existing.getId().equals(current.getId()))
+                        .ifPresent(existing -> { throw new IllegalArgumentException("Email already in use"); });
+                current.setEmail(nextEmail);
+            }
+        }
+
+        if (request.getNom() != null) {
+            current.setNom(request.getNom());
+        }
+        if (request.getPrenom() != null) {
+            current.setPrenom(request.getPrenom());
+        }
+
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            String currentPassword = request.getCurrentPassword();
+            if (currentPassword == null || currentPassword.isBlank()) {
+                throw new IllegalArgumentException("Current password is required");
+            }
+            if (!passwordEncoder.matches(currentPassword, current.getPassword())) {
+                throw new IllegalArgumentException("Invalid current password");
+            }
+            if (request.getNewPassword().length() < 8) {
+                throw new IllegalArgumentException("Password must be at least 8 characters");
+            }
+            current.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        }
+
+        utilisateurRepository.save(current);
+        return utilisateurMapper.toDto(current);
     }
 
     @Override

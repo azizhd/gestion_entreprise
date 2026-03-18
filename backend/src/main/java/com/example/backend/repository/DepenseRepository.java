@@ -29,6 +29,10 @@ public interface DepenseRepository extends JpaRepository<Depense, Long> {
     @Query("select coalesce(sum(d.montant),0) from Depense d where d.fournisseur.id = :fournisseurId and d.fournisseur.entreprise.id = :entrepriseId and d.statusDepense = 'APPROVED'")
     double sumApprovedByFournisseur(@Param("fournisseurId") Long fournisseurId, @Param("entrepriseId") Integer entrepriseId);
 
+    @Query("select coalesce(sum(d.montant),0) from Depense d where d.fournisseur.entreprise.id = :entrepriseId and d.statusDepense = :status")
+    double sumByFournisseurEntrepriseAndStatus(@Param("entrepriseId") Integer entrepriseId,
+                                               @Param("status") StatusDepense status);
+
     @Query("select d from Depense d where d.fournisseur.id = :fournisseurId and d.fournisseur.entreprise.id = :entrepriseId and d.statusDepense in ('APPROVED','PENDING') order by d.date desc")
     List<Depense> findUnpaidByFournisseur(@Param("fournisseurId") Long fournisseurId, @Param("entrepriseId") Integer entrepriseId);
 
