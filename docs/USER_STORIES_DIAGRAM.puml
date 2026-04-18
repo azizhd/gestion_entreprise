@@ -1,0 +1,121 @@
+@startuml User_Stories_SaaS_System
+title Multi-Tenant SaaS Enterprise Management System - User Stories Architecture
+
+' Define Actors/Roles
+actor Admin
+actor Secretaire as "Secrétaire"
+actor Comptable
+actor Employee
+actor "New User"
+actor "System"
+
+' Define Packages for Modules
+package "Authentication & Authorization" #FFE5CC {
+    usecase UC1 as "Register & Setup"
+    usecase UC2 as "Login with JWT"
+    usecase UC3 as "Session Management"
+    usecase UC4 as "Role-Based Access Control (RBAC)"
+}
+
+package "User & Role Management" #FFD9B3 {
+    usecase UC5 as "Create/Assign Users"
+    usecase UC6 as "Delete/Deactivate Users"
+    usecase UC7 as "Manage User Profiles"
+    usecase UC8 as "Send Invitations"
+    usecase UC9 as "Define Role Capabilities"
+}
+
+package "Document Management" #FFCCB3 {
+    usecase UC10 as "Upload & Store Docs"
+    usecase UC11 as "Organize Documents"
+    usecase UC12 as "Control Access/Permissions"
+    usecase UC13 as "View & Download"
+    usecase UC14 as "Delete & Archive"
+    usecase UC15 as "Bulk Operations"
+}
+
+package "AI Chat Assistant" #FFE0B3 {
+    usecase UC16 as "Access AI Chat"
+    usecase UC17 as "Send Chat Messages"
+    usecase UC18 as "AI Context & Tools"
+    usecase UC19 as "AI Rate Limiting"
+    usecase UC20 as "View Chat Logs"
+}
+
+package "Dashboard & Analytics" #E5F5FF {
+    usecase UC21 as "Personalized Dashboard"
+    usecase UC22 as "KPI Monitoring"
+    usecase UC23 as "Audit Logs"
+    usecase UC24 as "Reports & Export"
+}
+
+package "Rate Limiting & Security" #FFE5E5 {
+    usecase UC25 as "Per-User Rate Limits"
+    usecase UC26 as "Per-Role Rate Limits"
+    usecase UC27 as "AI Endpoint Limits"
+    usecase UC28 as "Rate Limit Responses"
+    usecase UC29 as "Security Monitoring"
+}
+
+package "Email System" #E8F5E9 {
+    usecase UC30 as "Send Transactional Emails"
+    usecase UC31 as "Send Notifications"
+    usecase UC32 as "Distribute Documents"
+    usecase UC33 as "Email Templates"
+}
+
+package "Enterprise Management" #F3E5F5 {
+    usecase UC34 as "Multi-Tenant Isolation"
+    usecase UC35 as "Enterprise Setup"
+    usecase UC36 as "Billing & Subscription"
+    usecase UC37 as "Compliance & Security"
+}
+
+' Define Role Relationships
+"New User" --> UC1
+Admin --> UC2
+Secretaire --> UC2
+Comptable --> UC2
+Employee --> UC2
+
+Admin --> UC4
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+Admin --> UC8
+Admin --> UC9
+
+Admin --> UC12
+Comptable --> UC12
+Secretaire --> UC12
+Comptable --> UC10
+Secretaire --> UC10
+Employee --> UC10
+
+Admin --> UC16
+Comptable --> UC19
+Secretaire --> UC19
+Employee --> UC19
+
+Admin --> UC21
+Comptable --> UC22
+Comptable --> UC23
+Admin --> UC23
+
+System --> UC25
+System --> UC26
+System --> UC27
+System --> UC28
+System --> UC29
+
+Admin --> UC30
+Admin --> UC31
+Comptable --> UC31
+Secretaire --> UC31
+
+Admin --> UC34
+Admin --> UC35
+Admin --> UC36
+Admin --> UC37
+
+@enduml

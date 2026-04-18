@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page;
 
 public interface FactureService {
 
-    Page<FactureDto> listFactures(int page, int size);
+    Page<FactureDto> listFactures(int page, int size, String statutFilter);
 
     FactureDto getFacture(Long id);
 

@@ -42,9 +42,24 @@ public class FactureServiceImpl implements FactureService {
 
     @Override
     @PreAuthorize("hasAnyRole('ADMIN','SECRETAIRE','COMPTABLE')")
-    public Page<FactureDto> listFactures(int page, int size) {
+    public Page<FactureDto> listFactures(int page, int size, String statutFilter) {
         Entreprise entreprise = resolveCurrentEntreprise();
-        return factureRepository.findByDevis_Client_Entreprise_Id(entreprise.getId(), PageRequest.of(page, size))
+        PageRequest pageRequest = PageRequest.of(page, size);
+        if (statutFilter == null || statutFilter.isBlank()) {
+            return factureRepository.findByDevis_Client_Entreprise_Id(entreprise.getId(), pageRequest)
+                    .map(factureMapper::toDTO);
+        }
+        if ("PAYEE".equalsIgnoreCase(statutFilter)) {
+            return factureRepository.findPaidByEntrepriseId(entreprise.getId(), pageRequest)
+                    .map(factureMapper::toDTO);
+        }
+        if ("IMPAYEE".equalsIgnoreCase(statutFilter)) {
+            return factureRepository.findUnpaidByEntrepriseId(entreprise.getId(), pageRequest)
+                    .map(factureMapper::toDTO);
+        }
+
+        StatutFacture statut = StatutFacture.valueOf(statutFilter.toUpperCase());
+        return factureRepository.findByDevis_Client_Entreprise_IdAndStatututFacture(entreprise.getId(), statut, pageRequest)
                 .map(factureMapper::toDTO);
     }
 

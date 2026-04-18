@@ -1,10 +1,16 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.EntrepriseDto;
+import com.example.backend.dto.EntrepriseDeleteRequest;
+import com.example.backend.dto.EntrepriseLogoDownload;
 import com.example.backend.service.EntrepriseService;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/entreprises")
@@ -72,6 +78,62 @@ public class EntrepriseController {
             return ResponseEntity.noContent().build();
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+    }
+
+    @PostMapping("/{id}/delete-request")
+    public ResponseEntity<?> requestDelete(@PathVariable Integer id, @RequestBody EntrepriseDeleteRequest request) {
+        try {
+            entrepriseService.requestDeletion(id, request);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> uploadLogo(@PathVariable Integer id, @RequestPart("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(entrepriseService.updateLogo(id, file));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/logo")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Resource> downloadLogo(@PathVariable Integer id) {
+        try {
+            EntrepriseLogoDownload download = entrepriseService.getLogo(id);
+            String contentType = download.contentType();
+            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+            if (contentType != null && !contentType.isBlank()) {
+                mediaType = MediaType.parseMediaType(contentType);
+            }
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .body(download.resource());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+    }
+
+    @DeleteMapping("/{id}/logo")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> removeLogo(@PathVariable Integer id) {
+        try {
+            return ResponseEntity.ok(entrepriseService.removeLogo(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
     }
 }

@@ -5,6 +5,7 @@ import java.util.List;
 
 public record ReportDocument(
         String companyName,
+        String companyLogo,
         String companyAddress,
         String companyEmail,
         String companyPhone,

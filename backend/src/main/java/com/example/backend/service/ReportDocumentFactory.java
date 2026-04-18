@@ -77,6 +77,7 @@ public class ReportDocumentFactory {
 
         return new ReportDocument(
                 companyName(company),
+            companyLogo(company),
                 companyLocation(company),
                 companyEmail(company),
                 companyPhone(company),
@@ -118,6 +119,7 @@ public class ReportDocumentFactory {
 
         return new ReportDocument(
                 companyName(company),
+            companyLogo(company),
                 companyLocation(company),
                 companyEmail(company),
                 companyPhone(company),
@@ -157,6 +159,7 @@ public class ReportDocumentFactory {
 
         return new ReportDocument(
                 companyName(company),
+            companyLogo(company),
                 companyLocation(company),
                 companyEmail(company),
                 companyPhone(company),
@@ -198,6 +201,7 @@ public class ReportDocumentFactory {
 
         return new ReportDocument(
                 companyName(company),
+            companyLogo(company),
                 companyLocation(company),
                 companyEmail(company),
                 companyPhone(company),
@@ -224,6 +228,7 @@ public class ReportDocumentFactory {
     private ReportDocument emptyDocument(Entreprise company, String title, String dateRange) {
         return new ReportDocument(
                 companyName(company),
+            companyLogo(company),
                 companyLocation(company),
                 companyEmail(company),
                 companyPhone(company),
@@ -344,6 +349,10 @@ public class ReportDocumentFactory {
 
     private String companyLocation(Entreprise e) {
         return e != null && e.getLocation() != null ? e.getLocation() : "";
+    }
+
+    private String companyLogo(Entreprise e) {
+        return e != null ? e.getLogo() : null;
     }
 
     private String companyEmail(Entreprise e) {

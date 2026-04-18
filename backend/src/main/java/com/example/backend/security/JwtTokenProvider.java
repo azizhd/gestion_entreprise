@@ -1,10 +1,13 @@
 package com.example.backend.security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -25,10 +28,13 @@ public class JwtTokenProvider {
 
     // Generate JWT Token
     public String generateToken(Authentication authentication) {
-        org.springframework.security.core.userdetails.User userPrincipal =
-                (org.springframework.security.core.userdetails.User) authentication.getPrincipal();
+        String email = authentication.getName();
+        String role = authentication.getAuthorities().stream()
+            .map(GrantedAuthority::getAuthority)
+            .findFirst()
+            .orElse("ROLE_EMPLOYEE");
 
-        return createToken(userPrincipal.getUsername(), userPrincipal.getAuthorities().iterator().next().getAuthority(), jwtExpirationMs);
+        return createToken(email, role, jwtExpirationMs);
     }
 
     // Generate Refresh Token

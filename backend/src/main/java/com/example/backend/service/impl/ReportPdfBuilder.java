@@ -3,21 +3,24 @@ package com.example.backend.service.impl;
 import com.example.backend.report.ReportDocument;
 import com.example.backend.report.ReportSummaryItem;
 import com.example.backend.report.ReportTable;
-import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Component
-@RequiredArgsConstructor
 class ReportPdfBuilder {
 
     private static final float MARGIN = 50f;
@@ -25,6 +28,12 @@ class ReportPdfBuilder {
     private static final float FOOTER_HEIGHT = 40f;
     private static final float TABLE_ROW_HEIGHT = 22f;
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private final Path logoStorageRoot;
+
+    ReportPdfBuilder(@Value("${app.entreprises.logos.storage:uploads/logos}") String logoStoragePath) {
+        this.logoStorageRoot = Paths.get(logoStoragePath).toAbsolutePath().normalize();
+    }
 
     byte[] build(ReportDocument doc) throws Exception {
         try (PDDocument pdf = new PDDocument()) {
@@ -35,7 +44,7 @@ class ReportPdfBuilder {
 
             try (PDPageContentStream cs = new PDPageContentStream(pdf, page)) {
                 float cursorY = box.getUpperRightY() - MARGIN;
-                cursorY = drawHeader(cs, doc, usableWidth, cursorY);
+                cursorY = drawHeader(pdf, cs, doc, usableWidth, cursorY);
                 cursorY = drawTitle(cs, doc, usableWidth, cursorY - 20);
                 cursorY = drawSummaries(cs, doc.summaries(), usableWidth, cursorY - 25);
                 cursorY = drawTables(cs, doc.tables(), usableWidth, cursorY - 30);
@@ -50,12 +59,15 @@ class ReportPdfBuilder {
         }
     }
 
-    private float drawHeader(PDPageContentStream cs, ReportDocument doc, float width, float startY) throws Exception {
+    private float drawHeader(PDDocument pdf, PDPageContentStream cs, ReportDocument doc, float width, float startY) throws Exception {
         float y = startY;
         cs.setNonStrokingColor(new Color(243, 246, 255));
         cs.addRect(MARGIN, y - HEADER_HEIGHT, width, HEADER_HEIGHT);
         cs.fill();
         cs.setNonStrokingColor(Color.BLACK);
+
+        float rightTextX = MARGIN + width - 110;
+        drawLogo(pdf, cs, doc.companyLogo(), MARGIN + width - 20, y - 10, 60, 60);
 
         cs.setFont(PDType1Font.HELVETICA_BOLD, 16);
         write(cs, safe(doc.companyName()), MARGIN + 10, y - 24);
@@ -65,9 +77,40 @@ class ReportPdfBuilder {
         write(cs, safe(doc.companyPhone()), MARGIN + 10, y - 70);
 
         cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
-        writeRight(cs, "Date : " + (doc.generatedAt() != null ? DATE_FMT.format(doc.generatedAt()) : ""), MARGIN + width - 10, y - 24);
-        writeRight(cs, safe(doc.dateRange()), MARGIN + width - 10, y - 40);
+        writeRight(cs, "Date : " + (doc.generatedAt() != null ? DATE_FMT.format(doc.generatedAt()) : ""), rightTextX, y - 24);
+        writeRight(cs, safe(doc.dateRange()), rightTextX, y - 40);
         return y - HEADER_HEIGHT;
+    }
+
+    private void drawLogo(PDDocument pdf, PDPageContentStream cs, String logoName, float x, float y,
+                          float maxWidth, float maxHeight) {
+        if (logoName == null || logoName.isBlank()) {
+            return;
+        }
+        try {
+            if (logoName.contains("://")) {
+                return;
+            }
+            Path logoPath = resolveLogoPath(logoName);
+            if (!Files.exists(logoPath)) {
+                return;
+            }
+            PDImageXObject image = PDImageXObject.createFromFile(logoPath.toAbsolutePath().toString(), pdf);
+            float scale = Math.min(maxWidth / image.getWidth(), maxHeight / image.getHeight());
+            float imgWidth = image.getWidth() * scale;
+            float imgHeight = image.getHeight() * scale;
+            cs.drawImage(image, x - imgWidth, y - imgHeight, imgWidth, imgHeight);
+        } catch (Exception ignored) {
+            // Ignore invalid paths or IO errors to keep report generation resilient.
+        }
+    }
+
+    private Path resolveLogoPath(String logoName) {
+        Path rawPath = Paths.get(logoName);
+        if (rawPath.isAbsolute()) {
+            return rawPath.normalize();
+        }
+        return logoStorageRoot.resolve(logoName).normalize();
     }
 
     private float drawTitle(PDPageContentStream cs, ReportDocument doc, float width, float startY) throws Exception {

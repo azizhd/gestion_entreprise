@@ -1,0 +1,81 @@
+@startuml User_Stories_Sequence
+title User Registration & Login Sequence - Authentication Flow
+
+participant "Client" as CLIENT
+participant "API Router" as ROUTER
+participant "Rate Limiter" as RATE_LIMIT
+participant "JWT Provider" as JWT
+participant "Auth Service" as AUTH_SVC
+participant "User Repository" as USER_REPO
+participant "Database" as DB
+participant "Email Service" as EMAIL_SVC
+
+== Registration Flow ==
+CLIENT -> ROUTER: POST /api/auth/register\n{email, password, name}
+ROUTER -> RATE_LIMIT: Check Rate Limit
+RATE_LIMIT -> ROUTER: OK - Limit Remaining: 99
+ROUTER -> AUTH_SVC: register(RegisterRequest)
+AUTH_SVC -> USER_REPO: findByEmail(email)
+USER_REPO -> DB: SELECT * FROM users WHERE email=?
+DB -> USER_REPO: No records found
+USER_SVC -> AUTH_SVC: Email available ✓
+AUTH_SVC -> AUTH_SVC: Validate Password (>= 8 chars)
+AUTH_SVC -> USER_REPO: save(newUser)
+USER_REPO -> DB: INSERT INTO users
+DB -> USER_REPO: User ID: 123
+USER_REPO -> AUTH_SVC: User Created
+AUTH_SVC -> EMAIL_SVC: sendWelcomeEmail(email)
+EMAIL_SVC -> EMAIL_SVC: Format Email Template
+EMAIL_SVC -> CLIENT: Email Sent
+CLIENT -> AUTH_SVC: Return Success + UserID
+AUTH_SVC -> ROUTER: HTTP 201 Created
+ROUTER -> CLIENT: {success: true, userId: 123, email}
+
+== Login Flow ==
+CLIENT -> ROUTER: POST /api/auth/login\n{email, password}
+ROUTER -> RATE_LIMIT: Check Rate Limit (Standard API)
+RATE_LIMIT -> ROUTER: OK - Employee Limit: 29/30
+ROUTER -> AUTH_SVC: login(LoginRequest)
+AUTH_SVC -> USER_REPO: findByEmail(email)
+USER_REPO -> DB: SELECT * FROM users WHERE email=?
+DB -> USER_REPO: {id: 123, role: ROLE_EMPLOYEE, ...}
+USER_REPO -> AUTH_SVC: User Found
+AUTH_SVC -> AUTH_SVC: Verify Password Hash
+AUTH_SVC -> JWT: createAccessToken(email, role)
+JWT -> JWT: Sign Token with Secret Key
+JWT -> AUTH_SVC: eyJhbGc...PAYLOAD...SIGNATURE
+AUTH_SVC -> JWT: generateRefreshToken(email)
+JWT -> AUTH_SVC: eyJhbGc...(REFRESH)
+AUTH_SVC -> ROUTER: {token, refreshToken, userId, role}
+ROUTER -> CLIENT: HTTP 200 OK\n{accessToken, refreshToken}
+CLIENT -> CLIENT: Store Token in LocalStorage
+
+== Protected Request with Token ==
+CLIENT -> ROUTER: GET /api/documents\nHeader: Authorization: Bearer [token]
+ROUTER -> RATE_LIMIT: Check Rate Limit (Employee)
+RATE_LIMIT -> ROUTER: OK - Limit: 28/30
+ROUTER -> JWT: validateToken(token)
+JWT -> JWT: Verify Signature & Expiration
+JWT -> ROUTER: Valid ✓
+ROUTER -> JWT: extractEmail(token)
+JWT -> ROUTER: user@example.com
+ROUTER -> JWT: extractRole(token)
+JWT -> ROUTER: ROLE_EMPLOYEE
+ROUTER -> AUTH_SVC: loadUserDetails(email)
+AUTH_SVC -> USER_REPO: findByEmail(email)
+USER_REPO -> DB: SELECT with Role
+DB -> USER_REPO: User with ROLE_EMPLOYEE
+AUTH_SVC -> ROUTER: CustomUserPrincipal(id, email, role)
+ROUTER -> ROUTER: Set SecurityContext
+ROUTER -> ROUTER: Route to Controller
+ROUTER -> CLIENT: Response with User Data
+
+== Rate Limit Exceeded ==
+CLIENT -> ROUTER: GET /api/ai/chat\n(31st request in 1 min)
+ROUTER -> RATE_LIMIT: Check AI Chat Rate Limit
+RATE_LIMIT -> RATE_LIMIT: Employee Limit: 5/min
+RATE_LIMIT -> RATE_LIMIT: Current: 5 consumed
+RATE_LIMIT -> ROUTER: LIMIT EXCEEDED ❌
+ROUTER -> CLIENT: HTTP 429 Too Many Requests\n{error: "Too many requests..."}
+
+@enduml

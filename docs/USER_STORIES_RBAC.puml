@@ -1,0 +1,149 @@
+@startuml User_Stories_RoleMatrix
+title Role-Based Access Control (RBAC) & Permissions Matrix
+
+' Define Role Hierarchy and Permissions
+class Role {
+    name: String
+    level: Integer
+}
+
+class Admin extends Role {
+    - Full system access
+    - Can manage users
+    - Can configure settings
+    - Can view all data
+    - Can generate reports
+}
+
+class Comptable extends Role {
+    - Can view financial data
+    - Can create/approve invoices
+    - Can access financial documents
+    - Limited to finance module
+}
+
+class Secretaire extends Role {
+    - Can manage documents
+    - Can schedule meetings
+    - Can send communications
+    - Limited to admin tasks
+}
+
+class Employee extends Role {
+    - Can view own documents
+    - Can view assigned tasks
+    - Most restricted access
+    - No admin features
+}
+
+' Permission Matrix as separate entities
+class FeatureAccess {
+    role: Role
+    feature: String
+    canCreate: Boolean
+    canRead: Boolean
+    canUpdate: Boolean
+    canDelete: Boolean
+}
+
+' Features with permissions
+note as AuthFeatures
+  **Authentication Module:**
+  - Register: Employee ✓, Admin ✓
+  - Login: All ✓
+  - Session Management: All ✓
+  - RBAC: Admin ✓
+end note
+
+note as UserMgmtFeatures
+  **User Management:**
+  - Create Users: Admin ✓
+  - Delete Users: Admin ✓
+  - View Users: Admin ✓, Comptable ✓
+  - Update Users: Admin ✓
+  - Invite Users: Admin ✓
+end note
+
+note as DocFeatures
+  **Document Management:**
+  - Upload: Secretaire ✓, Comptable ✓, Employee ✓
+  - View Own: All ✓
+  - View Department: Comptable ✓, Secretaire ✓
+  - View All: Admin ✓
+  - Delete: Admin ✓
+  - Share: All ✓
+end note
+
+note as AIFeatures
+  **AI Chat Module:**
+  - Access: All ✓
+  - Rate Limits:
+    • Admin: 20 req/min
+    • Comptable: 10 req/min
+    • Secretaire: 10 req/min
+    • Employee: 5 req/min
+end note
+
+note as DashboardFeatures
+  **Dashboard & Analytics:**
+  - Personal Dashboard: All ✓
+  - Department Analytics: Comptable ✓, Secretaire ✓
+  - Enterprise Analytics: Admin ✓
+  - Audit Logs: Admin ✓
+  - Export Reports: Admin ✓, Comptable ✓
+end note
+
+note as EmailFeatures
+  **Email System:**
+  - Send Notifications: Admin ✓, Secretaire ✓
+  - Send Invoices: Comptable ✓
+  - Send Documents: All ✓ (own docs)
+  - Email Templates: Admin ✓
+end note
+
+note as EnterpriseFeatures
+  **Enterprise Management:**
+  - Manage Enterprise: Admin ✓
+  - Configure Settings: Admin ✓
+  - Manage Subscription: Admin ✓
+  - View Billing: Admin ✓, Comptable ✓
+  - Multi-tenant Admin: Admin ✓
+end note
+
+' API Rate Limit Matrix
+table RateLimitMatrix {
+  | **Endpoint Type** | **Admin** | **Comptable** | **Secretaire** | **Employee** |
+  |-
+  | Standard API | 100/min | 60/min | 60/min | 30/min |
+  | AI Chat | 20/min | 10/min | 10/min | 5/min |
+  | Document API | 100/min | 80/min | 80/min | 40/min |
+  | Analytics API | 50/min | 30/min | 30/min | 10/min |
+}
+
+' Data Access Rules
+note as DataAccessRules
+  **Data Isolation & Access:**
+  
+  Query Filter Applied at Service Layer:
+  WHERE entreprise_id = current_user.entreprise_id
+  AND (role_permissions check)
+  
+  Role-Based Filters:
+  - Admin: No filter (all data)
+  - Comptable: Financial data only
+  - Secretaire: Admin/HR data only
+  - Employee: Own data only
+end note
+
+' Security Constraints
+note as SecurityConstraints
+  **Security Constraints:**
+  - Password: ≥8 chars, BCrypt hashed
+  - JWT: exp 24h, refresh 7d
+  - Session: Auto-logout after 1h inactivity
+  - Terms: Cannot delete last Admin
+  - Audit: All actions logged
+  - Encryption: SSL/TLS in transit, AES at rest
+end note
+
+@enduml

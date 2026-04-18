@@ -12,6 +12,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -35,6 +36,12 @@ public class PdfServiceImpl implements PdfService {
     private static final float TABLE_ROW_HEIGHT = 24f;
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final Locale LOCALE = Locale.FRANCE;
+
+    private final Path logoStorageRoot;
+
+    public PdfServiceImpl(@Value("${app.entreprises.logos.storage:uploads/logos}") String logoStoragePath) {
+        this.logoStorageRoot = Paths.get(logoStoragePath).toAbsolutePath().normalize();
+    }
 
     @Override
     public byte[] generateDevisPdf(Devis devis) throws Exception {
@@ -73,12 +80,12 @@ public class PdfServiceImpl implements PdfService {
         cs.setNonStrokingColor(Color.BLACK);
 
         float leftX = MARGIN + 24;
-        float rightX = MARGIN + width - 200;
+        float rightX = MARGIN + width - 230;
 
         Client client = devis.getClient();
         Entreprise entreprise = client != null ? client.getEntreprise() : null;
 
-        drawLogo(doc, cs, entreprise, MARGIN + width - 100, startY - 30, 70, 70);
+        drawLogo(doc, cs, entreprise, MARGIN + width - 20, startY - 10, 60, 60);
 
         cs.setFont(PDType1Font.HELVETICA_BOLD, 18);
         writeText(cs, safe(companyName(entreprise)), leftX, startY - 35);
@@ -230,7 +237,10 @@ public class PdfServiceImpl implements PdfService {
             return;
         }
         try {
-            Path logoPath = Paths.get(logo);
+            if (logo.contains("://")) {
+                return;
+            }
+            Path logoPath = resolveLogoPath(logo);
             if (!Files.exists(logoPath)) {
                 return;
             }
@@ -244,6 +254,14 @@ public class PdfServiceImpl implements PdfService {
         }
     }
 
+    private Path resolveLogoPath(String logoName) {
+        Path rawPath = Paths.get(logoName);
+        if (rawPath.isAbsolute()) {
+            return rawPath.normalize();
+        }
+        return logoStorageRoot.resolve(logoName).normalize();
+    }
+
     private void drawRowLines(PDPageContentStream cs, float width, float rowTop) throws IOException {
         cs.moveTo(MARGIN, rowTop);
         cs.lineTo(MARGIN + width, rowTop);
@@ -251,6 +269,7 @@ public class PdfServiceImpl implements PdfService {
     }
 
     private void writeTableCell(PDPageContentStream cs, String text, float x, float y) throws IOException {
+        text = normalizeText(text);
         cs.beginText();
         cs.newLineAtOffset(x, y);
         cs.showText(text);
@@ -263,6 +282,7 @@ public class PdfServiceImpl implements PdfService {
 
     private void writeAlignedCell(PDPageContentStream cs, String text, float x, float y, boolean alignRight,
                                    PDType1Font font, float fontSize) throws IOException {
+        text = normalizeText(text);
         if (!alignRight) {
             writeTableCell(cs, text, x, y);
             return;
@@ -277,6 +297,8 @@ public class PdfServiceImpl implements PdfService {
     private void writeSummaryRow(PDPageContentStream cs, String label, String value, float x, float y,
                                   PDType1Font labelFont, float labelSize,
                                   PDType1Font valueFont, float valueSize) throws IOException {
+        label = normalizeText(label);
+        value = normalizeText(value);
         cs.setFont(labelFont, labelSize);
         writeText(cs, label, x, y);
         float textWidth = valueFont.getStringWidth(value) / 1000 * valueSize;
@@ -285,6 +307,7 @@ public class PdfServiceImpl implements PdfService {
     }
 
     private void writeText(PDPageContentStream cs, String text, float x, float y) throws IOException {
+        text = normalizeText(text);
         if (text == null || text.isBlank()) {
             return;
         }
@@ -323,15 +346,22 @@ public class PdfServiceImpl implements PdfService {
     }
 
     private String formatAmount(double value) {
-        return String.format(LOCALE, "%,.2f €", value);
+        return normalizeText(String.format(LOCALE, "%,.2f €", value));
     }
 
     private String formatQty(double value) {
-        return String.format(LOCALE, "%,.0f", value);
+        return normalizeText(String.format(LOCALE, "%,.0f", value));
     }
 
     private String formatRate(double rate) {
-        return String.format(LOCALE, "%,.2f%%", rate * 100d);
+        return normalizeText(String.format(LOCALE, "%,.2f%%", rate * 100d));
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\u00a0', ' ').replace('\u202f', ' ');
     }
 
     private double safeNumber(Number value) {

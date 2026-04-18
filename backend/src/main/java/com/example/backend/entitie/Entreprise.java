@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.util.List;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "entreprise")
@@ -25,6 +26,10 @@ public class Entreprise {
     private String email;
     private String telephone;
     private String location;
+
+    private Boolean deleted = Boolean.FALSE;
+    private LocalDateTime deletionRequestedAt;
+    private LocalDateTime purgeAt;
 
     // OneToOne abonnement  
     @OneToOne(cascade = CascadeType.ALL)

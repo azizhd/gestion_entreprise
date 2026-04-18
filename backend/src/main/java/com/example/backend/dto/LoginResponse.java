@@ -18,4 +18,5 @@ public class LoginResponse {
     private String prenom;
     private String role;
     private Integer entrepriseId;
+    private String photo;
 }

@@ -22,6 +22,16 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
 
 	Page<Facture> findByDevis_Client_Entreprise_Id(Integer entrepriseId, Pageable pageable);
 
+	Page<Facture> findByDevis_Client_Entreprise_IdAndStatututFacture(Integer entrepriseId,
+	                                                               com.example.backend.entitie.enumuration.StatutFacture statut,
+	                                                               Pageable pageable);
+
+	@Query("select f from Facture f where f.devis.client.entreprise.id = :entrepriseId and (f.payee = true or f.statututFacture = com.example.backend.entitie.enumuration.StatutFacture.PAYEE)")
+	Page<Facture> findPaidByEntrepriseId(@Param("entrepriseId") Integer entrepriseId, Pageable pageable);
+
+	@Query("select f from Facture f where f.devis.client.entreprise.id = :entrepriseId and (f.payee = false or f.payee is null) and f.statututFacture in (com.example.backend.entitie.enumuration.StatutFacture.IMPAYEE, com.example.backend.entitie.enumuration.StatutFacture.EN_RETARD, com.example.backend.entitie.enumuration.StatutFacture.ENVOYEE)")
+	Page<Facture> findUnpaidByEntrepriseId(@Param("entrepriseId") Integer entrepriseId, Pageable pageable);
+
 	Optional<Facture> findByIdAndDevis_Client_Entreprise_Id(Long id, Integer entrepriseId);
 
     @Query("select f from Facture f where f.dueDate < :today and f.statututFacture not in (com.example.backend.entitie.enumuration.StatutFacture.PAYEE, com.example.backend.entitie.enumuration.StatutFacture.ANNULEE)")

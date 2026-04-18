@@ -1,0 +1,120 @@
+@startuml User_Stories_Architecture
+title Multi-Tenant SaaS System - Module Architecture & Dependencies
+
+' Define the main system boundary
+package "SaaS Enterprise Platform" {
+    
+    ' Frontend Layer
+    package "Client Layer" #E3F2FD {
+        component "Web Client" as WEB
+        component "Authentication UI" as AUTH_UI
+        component "Dashboard UI" as DASH_UI
+        component "Document Portal" as DOC_UI
+        component "AI Chat Interface" as AI_UI
+    }
+    
+    ' API & Security Layer
+    package "API & Security" #FFF3E0 {
+        component "JWT Auth Service" as JWT
+        component "RBAC Engine" as RBAC
+        component "Rate Limiting Filter" as RATE_LIMIT
+        component "Request Router" as ROUTER
+    }
+    
+    ' Business Logic Layer
+    package "Business Logic Services" #F3E5F5 {
+        component "Auth Service" as AUTH_SVC
+        component "User Management" as USER_SVC
+        component "Document Service" as DOC_SVC
+        component "AI Chat Service" as AI_SVC
+        component "Analytics Service" as ANALYTICS
+        component "Email Service" as EMAIL_SVC
+        component "Enterprise Service" as ENT_SVC
+    }
+    
+    ' Data Layer
+    package "Data & Storage" #E8F5E9 {
+        component "User Repository" as USER_DB
+        component "Document Storage" as DOC_STORAGE
+        component "Audit Log DB" as AUDIT_DB
+        component "Cache (Redis)" as CACHE
+        component "Main Database" as MAIN_DB
+    }
+    
+    ' External Integrations
+    package "External Services" #FFEBEE {
+        component "Email Provider" as EMAIL_PROVIDER
+        component "AI Provider (OpenAI/Ollama)" as AI_PROVIDER
+        component "File Storage (S3)" as FILE_STORAGE
+    }
+    
+    ' Cross-Cutting Concerns
+    package "Infrastructure & Monitoring" #FFF9C4 {
+        component "Logging & Monitoring" as LOGGING
+        component "Audit Trail" as AUDIT
+        component "Configuration" as CONFIG
+    }
+    
+    ' Relationships - Request Flow
+    WEB --> AUTH_UI : 1. User Registration
+    AUTH_UI --> ROUTER : 2. HTTP Request
+    ROUTER --> RATE_LIMIT : 3. Rate Limit Check
+    RATE_LIMIT --> RBAC : 4. Role Verification
+    RBAC --> JWT : 5. Token Validation
+    JWT --> AUTH_SVC : 6. Authenticate User
+    AUTH_SVC --> USER_DB : 7. Check Credentials
+    USER_DB --> MAIN_DB : 8. Query User
+    
+    ' Document Flow
+    DOC_UI --> ROUTER : Document Upload
+    ROUTER --> DOC_SVC : Process Request
+    DOC_SVC --> DOC_STORAGE : Store File
+    DOC_STORAGE --> FILE_STORAGE : Upload to S3
+    DOC_STORAGE --> MAIN_DB : Save Metadata
+    
+    ' AI Chat Flow
+    AI_UI --> ROUTER : Chat Request
+    ROUTER --> RATE_LIMIT : AI Rate Limit Check
+    RATE_LIMIT --> AI_SVC : Route to AI Service
+    AI_SVC --> AI_PROVIDER : Query AI Model
+    AI_PROVIDER --> AI_SVC : Response
+    AI_SVC --> AUDIT_DB : Log Request
+    
+    ' Dashboard Flow
+    DASH_UI --> ROUTER : Analytics Request
+    ROUTER --> ANALYTICS : Fetch Metrics
+    ANALYTICS --> MAIN_DB : Query Data
+    ANALYTICS --> CACHE : Cache Results
+    
+    ' Cross-cutting concerns
+    AUTH_SVC --> LOGGING : Log Auth Events
+    USER_SVC --> LOGGING : Log User Changes
+    DOC_SVC --> AUDIT : Document Access Audit
+    AI_SVC --> AUDIT : AI Usage Audit
+    EMAIL_SVC --> EMAIL_PROVIDER : Send Emails
+    ENT_SVC --> MAIN_DB : Multi-Tenant Data
+}
+
+' Legend
+note right of WEB
+  **Role Access Levels:**
+  - Admin: All features + Settings
+  - Secrétaire: Documents + Scheduling
+  - Comptable: Financial + Reports
+  - Employee: Own Documents + Tasks
+end note
+
+note bottom of RATE_LIMIT
+  **Rate Limits:**
+  Standard API: Admin 100/min, Employee 30/min
+  AI Endpoints: Admin 20/min, Employee 5/min
+end note
+
+note right of MAIN_DB
+  **Multi-Tenant Isolation:**
+  - Per-Enterprise Data Separation
+  - Query-Level Isolation Filter
+  - Cross-Tenant Access Denied
+end note
+
+@enduml

@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
 import com.example.backend.auth.AuthService;
+import com.example.backend.dto.AuthErrorResponse;
 import com.example.backend.dto.LoginRequest;
 import com.example.backend.dto.LoginResponse;
 import com.example.backend.dto.RegisterRequest;
@@ -35,14 +36,19 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         log.info("Login request received for email: {}", request.getEmail());
         try {
             LoginResponse response = authService.login(request);
             return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            log.warn("Login blocked: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new AuthErrorResponse("ENTREPRISE_DESACTIVE", "Entreprise desactivee. Contactez votre administrateur."));
         } catch (RuntimeException e) {
             log.error("Login failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new AuthErrorResponse("INVALID_CREDENTIALS", "Email ou mot de passe invalide."));
         }
     }
 

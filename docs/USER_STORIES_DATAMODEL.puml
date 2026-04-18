@@ -1,0 +1,189 @@
+@startuml User_Stories_DataModel
+title Multi-Tenant SaaS - Data Model & Entity Relationships
+
+enum TypeRole {
+    ROLE_ADMIN
+    ROLE_SECRETAIRE
+    ROLE_COMPTABLE
+    ROLE_EMPLOYEE
+}
+
+class Entreprise {
+    - id: Long
+    - nom: String
+    - email: String
+    - telephone: String
+    - logo: String
+    - manager: Utilisateur
+    - createdAt: DateTime
+    - subscriptionTier: SubscriptionTier
+}
+
+class Utilisateur {
+    - id: Long
+    - nom: String
+    - prenom: String
+    - email: String (UNIQUE)
+    - password: String (BCrypt)
+    - telephone: String
+    - role: TypeRole
+    - photo: String
+    - entreprise: Entreprise
+    - createdAt: DateTime
+    - status: UserStatus
+}
+
+enum UserStatus {
+    ACTIVE
+    INACTIVE
+    PENDING_INVITATION
+}
+
+class Document {
+    - id: Long
+    - nom: String
+    - type: String
+    - size: Long
+    - filePath: String
+    - uploadedBy: Utilisateur
+    - entreprise: Entreprise
+    - category: DocumentCategory
+    - createdAt: DateTime
+    - updatedAt: DateTime
+    - isDeleted: Boolean
+}
+
+enum DocumentCategory {
+    INVOICE
+    QUOTE
+    CONTRACT
+    REPORT
+    OTHER
+}
+
+class DocumentPermission {
+    - id: Long
+    - document: Document
+    - role: TypeRole
+    - canView: Boolean
+    - canDownload: Boolean
+    - canDelete: Boolean
+    - createdAt: DateTime
+}
+
+class AuditLog {
+    - id: Long
+    - action: String
+    - entityType: String
+    - entityId: Long
+    - utilisateur: Utilisateur
+    - entreprise: Entreprise
+    - details: String
+    - ipAddress: String
+    - timestamp: DateTime
+}
+
+class RateLimitEntry {
+    - id: Long
+    - userId: Long
+    - role: TypeRole
+    - endpointType: EndpointType
+    - tokensConsumed: Integer
+    - tokensRemaining: Integer
+    - windowReset: DateTime
+    - entreprise: Entreprise
+}
+
+enum EndpointType {
+    STANDARD_API
+    AI_CHAT
+}
+
+class AIChat {
+    - id: Long
+    - userId: Long
+    - message: String
+    - response: String
+    - tokenCount: Integer
+    - timestamp: DateTime
+    - entreprise: Entreprise
+}
+
+class Notification {
+    - id: Long
+    - utilisateur: Utilisateur
+    - type: NotificationType
+    - title: String
+    - content: String
+    - isRead: Boolean
+    - createdAt: DateTime
+}
+
+enum NotificationType {
+    WELCOME
+    INVITATION
+    DOCUMENT_SHARED
+    RATE_LIMIT_WARNING
+    INVOICE_READY
+}
+
+class Abonnement {
+    - id: Long
+    - entreprise: Entreprise
+    - type: SubscriptionTier
+    - startDate: DateTime
+    - endDate: DateTime
+    - isActive: Boolean
+    - maxUsers: Integer
+    - features: String[]
+}
+
+enum SubscriptionTier {
+    FREE
+    PRO
+    ENTERPRISE
+}
+
+' Relationships
+Entreprise "1" --> "*" Utilisateur : contains
+Utilisateur "1" --> "*" Document : uploads
+Utilisateur "1" --> "*" AuditLog : initiates
+Utilisateur "1" --> "*" AIChat : sends
+Utilisateur "1" --> "*" Notification : receives
+
+Entreprise "1" --> "*" Document : stores
+Entreprise "1" --> "*" RateLimitEntry : tracks
+Entreprise "1" --> "*" AIChat : contains
+Entreprise "1" --> "*" AuditLog : audits
+Entreprise "1" --> "1" Abonnement : has
+
+Document "1" --> "*" DocumentPermission : has
+DocumentPermission --> TypeRole : grants_to
+
+Utilisateur --> TypeRole : has_role
+
+' Multi-Tenancy Indicator
+note right of Entreprise
+  **Multi-Tenant Isolation:**
+  - All entities tied to Entreprise
+  - Query-level WHERE entreprise_id = ?
+  - Cross-tenant queries return 0 rows
+  - No shared data between enterprises
+end note
+
+note right of RateLimitEntry
+  **Rate Limit Buckets:**
+  Per (userId, endpointType, role)
+  Reset at window expiration
+  Token-bucket algorithm (Bucket4j)
+end note
+
+note right of DocumentPermission
+  **Role-Based Access Control:**
+  Admin: All operations
+  Comptable: Financial docs only
+  Secrétaire: Admin docs only
+  Employee: Own docs only
+end note
+
+@enduml

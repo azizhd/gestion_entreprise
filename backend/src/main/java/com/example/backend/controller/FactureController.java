@@ -25,8 +25,9 @@ public class FactureController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','SECRETAIRE','COMPTABLE')")
     public ResponseEntity<Page<FactureDto>> list(@RequestParam(defaultValue = "0") int page,
-                                                 @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(factureService.listFactures(page, size));
+                                                 @RequestParam(defaultValue = "20") int size,
+                                                 @RequestParam(required = false) String statut) {
+        return ResponseEntity.ok(factureService.listFactures(page, size, statut));
     }
 
     @GetMapping("/{id}")

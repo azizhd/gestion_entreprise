@@ -93,6 +93,11 @@ public class AuthService {
     // Login user
     public LoginResponse login(LoginRequest request) {
         try {
+            Utilisateur utilisateur = utilisateurRepository.findByEmail(request.getEmail()).orElse(null);
+            if (utilisateur != null) {
+            ensureEntrepriseActive(utilisateur);
+            }
+
             // Authenticate user
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -102,8 +107,10 @@ public class AuthService {
             );
 
             // Get user details
-            Utilisateur utilisateur = utilisateurRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+            if (utilisateur == null) {
+            utilisateur = utilisateurRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            }
 
             // Generate tokens
             String accessToken = tokenProvider.createAccessToken(utilisateur.getEmail(), utilisateur.getRole().toString());
@@ -120,6 +127,7 @@ public class AuthService {
                     .prenom(utilisateur.getPrenom())
                     .role(utilisateur.getRole().toString())
                     .entrepriseId(utilisateur.getEntreprise() != null ? utilisateur.getEntreprise().getId() : null)
+                    .photo(utilisateur.getPhoto())
                     .build();
 
         } catch (Exception e) {
@@ -151,6 +159,7 @@ public class AuthService {
                     .nom(utilisateur.getNom())
                     .prenom(utilisateur.getPrenom())
                     .role(utilisateur.getRole().toString())
+                    .photo(utilisateur.getPhoto())
                     .build();
 
         } catch (Exception e) {
@@ -162,5 +171,16 @@ public class AuthService {
     // Validate password strength
     private boolean isPasswordValid(String password) {
         return password != null && password.length() >= 8;
+    }
+
+    private void ensureEntrepriseActive(Utilisateur utilisateur) {
+        if (utilisateur.getEntreprise() == null) {
+            return;
+        }
+        entrepriseRepository.findById(utilisateur.getEntreprise().getId())
+                .filter(ent -> Boolean.TRUE.equals(ent.getDeleted()))
+                .ifPresent(ent -> {
+                    throw new IllegalStateException("Entreprise desactivee");
+                });
     }
 }
